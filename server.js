@@ -81,6 +81,10 @@ app.use("/api/feedback", require("./src/routes/feedbackRoutes"));
 // Mount payment routes (protected)
 app.use("/api/payment", require("./src/routes/paymentRoutes"));
 
+// ===== / ========
+app.get("/", (req, res) => {
+  res.status(200).json({ message: "server oke" });
+});
 // ===== Health Check =====
 app.get("/api/health", (req, res) => {
   res.status(200).json({ message: "Backend is running" });
