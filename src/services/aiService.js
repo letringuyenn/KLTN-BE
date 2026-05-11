@@ -182,7 +182,7 @@ const analyzeLogsWithAI = async (logs, customApiKey, context = {}) => {
 
     const client = new GoogleGenerativeAI(API_KEY_TO_USE);
     const tier = context.tier === "PRO" ? "PRO" : "FREE";
-    const modelName = "gemini-2.5-flash";
+    const modelName = "gemini-1.5-flash"; // Fixed invalid model name
 
     const model = client.getGenerativeModel({ model: modelName });
 
