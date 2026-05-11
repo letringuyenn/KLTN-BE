@@ -423,8 +423,124 @@ const createPullRequest = async ({
   }
 };
 
+/**
+ * Fetch repository file tree from GitHub to provide context to AI
+ * @param {string} owner - Repository owner
+ * @param {string} repo - Repository name
+ * @param {string} branch - Branch name (default: main/master)
+ * @param {string} accessToken - GitHub personal access token
+ * @returns {Promise<string>} Formatted file tree string for AI context
+ */
+const getRepositoryTree = async (owner, repo, branch = "main", accessToken) => {
+  try {
+    const decryptedToken = resolveGitHubAccessToken(accessToken);
+    const octokit = getOctokit(decryptedToken);
+
+    // Get the commit SHA of the branch
+    const { data: refData } = await octokit.rest.git.getRef({
+      owner,
+      repo,
+      ref: `heads/${branch}`,
+    });
+
+    const treeSha = refData.object.sha;
+
+    // Get the tree recursively
+    const { data: treeData } = await octokit.rest.git.getTree({
+      owner,
+      repo,
+      tree_sha: treeSha,
+      recursive: "1",
+    });
+
+    // Filter important files and build a readable tree string
+    const importantExtensions = [
+      ".json",
+      ".yml",
+      ".yaml",
+      ".js",
+      ".ts",
+      ".jsx",
+      ".tsx",
+      ".py",
+      ".go",
+      ".rb",
+      ".java",
+      ".gradle",
+      ".xml",
+      ".sh",
+      ".bash",
+      "Dockerfile",
+      ".dockerignore",
+      ".github",
+    ];
+
+    const ignoredPatterns = [
+      "node_modules/",
+      ".git/",
+      "dist/",
+      "build/",
+      ".next/",
+      "__pycache__/",
+      ".venv/",
+      "venv/",
+      ".DS_Store",
+      "package-lock.json",
+      "yarn.lock",
+      ".env",
+      ".env.local",
+    ];
+
+    const isImportantFile = (path) => {
+      // Skip ignored patterns
+      if (ignoredPatterns.some((pattern) => path.includes(pattern))) {
+        return false;
+      }
+
+      // Check if file extension or name is important
+      return (
+        importantExtensions.some(
+          (ext) => path.endsWith(ext) || path.includes(ext)
+        ) ||
+        [
+          "Dockerfile",
+          "docker-compose.yml",
+          ".github/workflows",
+          "package.json",
+          "tsconfig.json",
+          "jest.config.js",
+          ".gitignore",
+        ].some((name) => path.includes(name))
+      );
+    };
+
+    const filteredPaths = treeData.tree
+      .filter((item) => item.type === "blob" && isImportantFile(item.path))
+      .map((item) => item.path)
+      .sort();
+
+    // Build readable tree string
+    const fileTreeString = filteredPaths
+      .map((path) => `  ${path}`)
+      .join("\n");
+
+    console.log(
+      `[GitHub] Repository tree fetched with ${filteredPaths.length} important files`
+    );
+
+    return fileTreeString || "No important files found in repository.";
+  } catch (error) {
+    console.warn(
+      "[GitHub] Failed to fetch repository tree, continuing without context:",
+      error.message
+    );
+    return "Unable to fetch repository tree. Please ensure the branch exists.";
+  }
+};
+
 module.exports = {
   fetchFailedWorkflowLogs,
   createFixBranchAndCommit,
   createPullRequest,
+  getRepositoryTree,
 };

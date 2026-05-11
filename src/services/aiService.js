@@ -164,7 +164,7 @@ function analyzeWithHeuristics(logs, context = {}) {
  * Analyze CI/CD logs using Google Gemini AI
  * @param {string} logs - Raw CI/CD workflow logs
  * @param {string} customApiKey - Optional Gemini API key from user request header
- * @param {Object} context - Workflow context (branchName, prNumber)
+ * @param {Object} context - Workflow context (branchName, prNumber, fileTree)
  * @returns {Promise<Object>} Structured analysis with rootCause, suggestedFixText, and patchFiles
  */
 const analyzeLogsWithAI = async (logs, customApiKey, context = {}) => {
@@ -193,8 +193,9 @@ const analyzeLogsWithAI = async (logs, customApiKey, context = {}) => {
     // 3. KHỞI TẠO LOCAL INSTANCE
     const genAI = new GoogleGenerativeAI(cleanKey);
     const tier = context.tier === "PRO" ? "PRO" : "FREE";
+    const fileTree = context.fileTree || "File tree not available";
     
-    const localModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const localModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
     const branchName = context.branchName || "main";
     const prNumber = context.prNumber || null;
@@ -210,24 +211,33 @@ const analyzeLogsWithAI = async (logs, customApiKey, context = {}) => {
       : "";
 
     const prompt = `${ragPrefix}You are an Expert DevSecOps Engineer and CI/CD Pipeline Debugger.
-  Analyze the following workflow logs to identify failures and generate a machine-readable patch plan.
+Analyze the following workflow logs to identify failures and generate a machine-readable patch plan.
 
-  GitHub Flow context:
-  - branchName: ${branchName}
-  - prNumber: ${prNumber || "none"}
-  - isFeatureBranch: ${isFeatureBranch ? "yes" : "no"}
-  - userTier: ${tier}
+THÔNG TIN QUAN TRỌNG: Dưới đây là cấu trúc cây thư mục thực tế của dự án:
+--- FILE TREE ---
+${fileTree}
+--- END FILE TREE ---
 
-  If isFeatureBranch is yes, prioritize recommendations that are minimal, review-friendly, and safe for Pull Request review before merging to main.
+GitHub Flow context:
+- branchName: ${branchName}
+- prNumber: ${prNumber || "none"}
+- isFeatureBranch: ${isFeatureBranch ? "yes" : "no"}
+- userTier: ${tier}
+
+NGUYÊN TẮC BẮT BUỘC:
+1. TUYỆT ĐỐI KHÔNG ĐƯỢC GIẢ ĐỊNH (ASSUME) hay ĐOÁN MÒ tên thư mục (như 'app', 'src', 'source').
+2. Nếu lỗi liên quan đến thiếu working-directory, phải nhìn vào FILE TREE để tìm chính xác vị trí của package.json và dùng đúng đường dẫn đó.
+3. Nếu thư mục không tìm thấy trong FILE TREE, không thêm vào đề xuất của bạn.
+4. Chỉ đề xuất sửa các file thực sự tồn tại trong FILE TREE.
 
 CRITICAL INSTRUCTION: Return ONLY valid JSON. No markdown fences, no commentary, no prose outside JSON.
 CRITICAL INSTRUCTION: The JSON must match this exact shape and key names:
 {
   "rootCause": "Detailed explanation of the root cause.",
-  "fixSuggestion": "Detailed fix instructions.",
+  "fixSuggestion": "Detailed fix instructions based on actual repository structure.",
   "patchFiles": [
     {
-      "filePath": "exact/relative/path/to/file",
+      "filePath": "exact/path/from/file/tree",
       "fileContent": "ENTIRE_FILE_CONTENT_WITH_FIX"
     }
   ]

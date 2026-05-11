@@ -4,6 +4,7 @@ const {
   fetchFailedWorkflowLogs,
   createFixBranchAndCommit,
   createPullRequest,
+  getRepositoryTree,
 } = require("./githubService");
 const { analyzeLogsWithAI } = require("./aiService");
 const {
@@ -184,7 +185,21 @@ async function analyzeWorkflowForUser({
     analysisLog.baseBranch = workflowData.baseBranch || null;
     analysisLog.prNumber = workflowData.prNumber || null;
 
-    console.log("[Analysis] Calling Gemini analysis...");
+    console.log("[Analysis] Fetching repository file tree for AI context...");
+    let fileTreeForAI = "";
+    try {
+      fileTreeForAI = await getRepositoryTree(
+        owner,
+        repo,
+        workflowData.branchName || "main",
+        effectiveGitHubToken,
+      );
+    } catch (treeError) {
+      console.warn("[Analysis] Could not fetch file tree:", treeError.message);
+      fileTreeForAI = "File tree unavailable for this analysis.";
+    }
+
+    console.log("[Analysis] Calling Gemini analysis with file tree context...");
     const aiAnalysis = await analyzeLogsWithAI(
       workflowData.logs || "",
       effectiveApiKey,
@@ -193,6 +208,7 @@ async function analyzeWorkflowForUser({
         prNumber: analysisLog.prNumber,
         errorMessage: extractPrimaryErrorMessage(workflowData.logs || ""),
         tier: user.tier,
+        fileTree: fileTreeForAI,
       },
     );
 
