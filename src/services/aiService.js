@@ -173,22 +173,25 @@ const analyzeLogsWithAI = async (logs, customApiKey, context = {}) => {
       throw new Error("Logs cannot be empty");
     }
 
-    // 1. TẠM THỜI BỎ QUA customApiKey, ÉP DÙNG ENV
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    console.log("=========================================");
-    console.log("🔍 KIỂM TRA LUỒNG NẠP API KEY (ENV ONLY):");
-    console.log("- Bỏ qua User BYOK Key do lỗi chưa giải mã.");
-    console.log("- Có ENV GEMINI_API_KEY không?:", !!process.env.GEMINI_API_KEY);
-    console.log("- Chiều dài Key sẽ sử dụng:", apiKey ? apiKey.length : 0);
-    console.log("=========================================");
-
-    if (!apiKey || apiKey.trim() === "") {
-        throw new Error("Missing GEMINI_API_KEY in Environment Variables");
+    // 1. ÉP BUỘC CHỈ DÙNG KHÓA TRÊN RENDER, CẮT BỎ MỌI KHOẢNG TRẮNG VÀ DẤU NGOẶC KÉP
+    let rawKey = process.env.GEMINI_API_KEY;
+    
+    if (!rawKey) {
+        throw new Error("LỖI BACKEND: Không tìm thấy biến GEMINI_API_KEY trên Render.");
     }
 
-    // 2. KHỞI TẠO LOCAL INSTANCE NGAY BÊN TRONG HÀM
-    const genAI = new GoogleGenerativeAI(apiKey.trim());
+    // Làm sạch key: Xóa khoảng trắng 2 đầu và dấu ngoặc kép thừa (nếu có)
+    const cleanKey = rawKey.trim().replace(/^"|"$/g, '');
+
+    // 2. IN LOG BẮT QUẢ TANG
+    console.log("=========================================");
+    console.log("🔥 CHỐT LUỒNG API KEY CUỐI CÙNG:");
+    console.log("- Chiều dài khóa sau khi dọn dẹp:", cleanKey.length);
+    console.log("- 5 ký tự đầu tiên:", cleanKey.substring(0, 5));
+    console.log("=========================================");
+
+    // 3. KHỞI TẠO LOCAL INSTANCE
+    const genAI = new GoogleGenerativeAI(cleanKey);
     const tier = context.tier === "PRO" ? "PRO" : "FREE";
     
     const localModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
