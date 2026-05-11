@@ -1,6 +1,11 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const KnowledgeBase = require("../models/KnowledgeBase");
 
+const GEMINI_REQUEST_TIMEOUT_MS = parseInt(
+  process.env.GEMINI_REQUEST_TIMEOUT_MS || "60000",
+  10,
+);
+
 const buildSearchText = (logs, context = {}) => {
   const explicitError =
     typeof context.errorMessage === "string" ? context.errorMessage.trim() : "";
@@ -228,7 +233,15 @@ If no safe patch is known, return patchFiles as an empty array.
 Workflow Logs:
 ${logs}`;
 
-    const result = await model.generateContent(prompt);
+    const result = await Promise.race([
+      model.generateContent(prompt),
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Gemini request timed out")),
+          GEMINI_REQUEST_TIMEOUT_MS,
+        ),
+      ),
+    ]);
     const responseText = result.response.text();
 
     const aiData = JSON.parse(responseText.replace(/```json\n|```/g, ""));

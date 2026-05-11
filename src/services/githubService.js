@@ -4,6 +4,10 @@ const { decryptString, isEncryptedString } = require("../utils/crypto");
 const { parseGitHubRepo } = require("../utils/logParser");
 
 const GITHUB_API_BASE = "https://api.github.com";
+const GITHUB_REQUEST_TIMEOUT_MS = parseInt(
+  process.env.GITHUB_REQUEST_TIMEOUT_MS || "15000",
+  10,
+);
 
 const resolveGitHubAccessToken = (storedToken) => {
   if (!storedToken || typeof storedToken !== "string") {
@@ -84,6 +88,7 @@ const resolveRunId = async (owner, repo, runId, accessToken) => {
   const runsUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/actions/runs?status=completed&per_page=20`;
   const runsResponse = await axios.get(runsUrl, {
     headers: GITHUB_HEADERS(accessToken),
+    timeout: GITHUB_REQUEST_TIMEOUT_MS,
   });
 
   const runs = runsResponse.data?.workflow_runs || [];
@@ -119,6 +124,7 @@ const fetchFailedWorkflowLogs = async (owner, repo, runId, accessToken) => {
     const runUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/actions/runs/${effectiveRunId}`;
     const runResponse = await axios.get(runUrl, {
       headers: GITHUB_HEADERS(decryptedToken),
+      timeout: GITHUB_REQUEST_TIMEOUT_MS,
     });
 
     if (runResponse.data.status !== "completed") {
@@ -129,6 +135,7 @@ const fetchFailedWorkflowLogs = async (owner, repo, runId, accessToken) => {
     const jobsUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/actions/runs/${effectiveRunId}/jobs`;
     const jobsResponse = await axios.get(jobsUrl, {
       headers: GITHUB_HEADERS(decryptedToken),
+      timeout: GITHUB_REQUEST_TIMEOUT_MS,
     });
 
     // Find failed jobs
@@ -158,6 +165,7 @@ const fetchFailedWorkflowLogs = async (owner, repo, runId, accessToken) => {
           `${GITHUB_API_BASE}/repos/${owner}/${repo}/pulls/${prNumber}`,
           {
             headers: GITHUB_HEADERS(decryptedToken),
+            timeout: GITHUB_REQUEST_TIMEOUT_MS,
           },
         );
         baseBranch = pullResponse.data?.base?.ref || null;
@@ -186,6 +194,7 @@ const fetchFailedWorkflowLogs = async (owner, repo, runId, accessToken) => {
           Authorization: `token ${decryptedToken}`,
           Accept: "application/vnd.github.v3.raw",
         },
+        timeout: GITHUB_REQUEST_TIMEOUT_MS,
       });
       combinedLogs += `\n\n=== Job: ${job.name} ===\n${logsResponse.data}`;
     }

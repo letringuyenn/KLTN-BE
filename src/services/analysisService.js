@@ -134,6 +134,15 @@ async function analyzeWorkflowForUser({
 
   const effectiveApiKey = resolveEffectiveApiKey(user, customApiKey);
 
+  const analysisStartedAt = Date.now();
+  console.log("[Analysis] Job started", {
+    userId: String(userId),
+    repoUrl,
+    workflowRunId: effectiveRunId,
+    hasCustomApiKey: Boolean(customApiKey),
+    tier: user.tier,
+  });
+
   const analysisLog = new AnalysisLog({
     userId,
     repoFullName,
@@ -152,12 +161,20 @@ async function analyzeWorkflowForUser({
   await analysisLog.save();
 
   try {
+    console.log("[Analysis] Fetching GitHub workflow logs...");
     const workflowData = await fetchFailedWorkflowLogs(
       owner,
       repo,
       effectiveRunId,
       effectiveGitHubToken,
     );
+
+    console.log("[Analysis] GitHub workflow logs fetched", {
+      elapsedMs: Date.now() - analysisStartedAt,
+      runId: workflowData.effectiveRunId,
+      branchName: workflowData.branchName,
+      prNumber: workflowData.prNumber,
+    });
 
     analysisLog.rawErrorSnippet = (workflowData.logs || "").slice(
       0,
@@ -167,6 +184,7 @@ async function analyzeWorkflowForUser({
     analysisLog.baseBranch = workflowData.baseBranch || null;
     analysisLog.prNumber = workflowData.prNumber || null;
 
+    console.log("[Analysis] Calling Gemini analysis...");
     const aiAnalysis = await analyzeLogsWithAI(
       workflowData.logs || "",
       effectiveApiKey,
@@ -178,6 +196,14 @@ async function analyzeWorkflowForUser({
       },
     );
 
+    console.log("[Analysis] Gemini analysis finished", {
+      elapsedMs: Date.now() - analysisStartedAt,
+      severity: aiAnalysis.severity,
+      hasPatchFiles: Array.isArray(aiAnalysis.patchFiles)
+        ? aiAnalysis.patchFiles.length > 0
+        : false,
+    });
+
     analysisLog.aiResult = {
       rootCause: aiAnalysis.rootCause,
       suggestedFix: aiAnalysis.suggestedFixText,
@@ -188,6 +214,11 @@ async function analyzeWorkflowForUser({
     analysisLog.severity = aiAnalysis.severity || "MEDIUM";
     analysisLog.status = "COMPLETED";
     await analysisLog.save();
+
+    console.log("[Analysis] Analysis log saved", {
+      elapsedMs: Date.now() - analysisStartedAt,
+      analysisLogId: String(analysisLog._id),
+    });
 
     if (user.role !== "ADMIN" && user.tier !== "PRO") {
       user.analyzeCount = (user.analyzeCount || 0) + 1;
