@@ -173,24 +173,25 @@ const analyzeLogsWithAI = async (logs, customApiKey, context = {}) => {
       throw new Error("Logs cannot be empty");
     }
 
-    const apiKey = customApiKey || process.env.GEMINI_API_KEY;
+    // 1. TẠM THỜI BỎ QUA customApiKey, ÉP DÙNG ENV
+    const apiKey = process.env.GEMINI_API_KEY;
 
     console.log("=========================================");
-    console.log("🔍 KIỂM TRA LUỒNG NẠP API KEY:");
-    console.log("- Có User BYOK Key không?:", !!customApiKey);
+    console.log("🔍 KIỂM TRA LUỒNG NẠP API KEY (ENV ONLY):");
+    console.log("- Bỏ qua User BYOK Key do lỗi chưa giải mã.");
     console.log("- Có ENV GEMINI_API_KEY không?:", !!process.env.GEMINI_API_KEY);
     console.log("- Chiều dài Key sẽ sử dụng:", apiKey ? apiKey.length : 0);
     console.log("=========================================");
 
     if (!apiKey || apiKey.trim() === "") {
-        throw new Error("BACKEND_MISSING_API_KEY: Không tìm thấy khóa nào từ cả User và Environment.");
+        throw new Error("Missing GEMINI_API_KEY in Environment Variables");
     }
 
-    // KHỞI TẠO LOCAL NGAY BÊN TRONG HÀM ĐỂ NHẬN ĐÚNG KEY SAU KHI TRIM:
+    // 2. KHỞI TẠO LOCAL INSTANCE NGAY BÊN TRONG HÀM
     const genAI = new GoogleGenerativeAI(apiKey.trim());
     const tier = context.tier === "PRO" ? "PRO" : "FREE";
     
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const localModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const branchName = context.branchName || "main";
     const prNumber = context.prNumber || null;
@@ -236,7 +237,7 @@ Workflow Logs:
 ${logs}`;
 
     const result = await Promise.race([
-      model.generateContent(prompt),
+      localModel.generateContent(prompt),
       new Promise((_, reject) =>
         setTimeout(
           () => reject(new Error("Gemini request timed out")),
