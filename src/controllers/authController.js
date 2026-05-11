@@ -49,8 +49,8 @@ function serializeUserProfile(userDoc) {
 const JWT_COOKIE_NAME = "jwt";
 const JWT_COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "strict",
+  secure: true,
+  sameSite: "none",
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
