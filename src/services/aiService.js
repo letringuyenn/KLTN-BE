@@ -239,12 +239,21 @@ ${logs}`;
       ),
     ]);
     const responseText = result.response.text();
+    console.log("--- RAW GEMINI RESPONSE ---");
+    console.log(responseText);
+    console.log("---------------------------");
 
-    const aiData = JSON.parse(responseText.replace(/```json\n|```/g, ""));
+    // Robust JSON cleanup to prevent parse errors from markdown quotes or trailing text
+    const cleanJsonText = responseText
+      .replace(/```json/gi, "")
+      .replace(/```/g, "")
+      .trim();
+
+    const aiData = JSON.parse(cleanJsonText);
 
     // Validate response structure
     if (!aiData.rootCause || !aiData.fixSuggestion) {
-      throw new Error("AI response missing required fields");
+      throw new Error(`AI response missing required fields. Parsed keys: ${Object.keys(aiData).join(', ')}`);
     }
 
     const patchFiles = Array.isArray(aiData.patchFiles)
@@ -288,7 +297,10 @@ ${logs}`;
       throw quotaError;
     }
 
-    console.error("Error analyzing logs with AI:", error.message);
+    console.error("❌ Error analyzing logs with AI:", error.message);
+    if (error.name === "SyntaxError") {
+      console.error("The AI generated invalid JSON. Check the RAW GEMINI RESPONSE above.");
+    }
     console.warn("⚠ Falling back to heuristic analysis");
     return analyzeWithHeuristics(logs, context);
   }
