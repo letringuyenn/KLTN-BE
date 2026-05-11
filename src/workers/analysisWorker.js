@@ -39,7 +39,12 @@ async function processNextPendingJob() {
     const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
     await AnalysisJob.updateMany(
       { status: "processing", updatedAt: { $lt: fiveMinsAgo } },
-      { $set: { status: "failed", errorMessage: "Job crashed or timed out unexpectedly" } }
+      {
+        $set: {
+          status: "failed",
+          errorMessage: "Job crashed or timed out unexpectedly",
+        },
+      },
     );
 
     const job = await AnalysisJob.findOneAndUpdate(

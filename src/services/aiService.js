@@ -213,22 +213,18 @@ const analyzeLogsWithAI = async (logs, customApiKey, context = {}) => {
 CRITICAL INSTRUCTION: Return ONLY valid JSON. No markdown fences, no commentary, no prose outside JSON.
 CRITICAL INSTRUCTION: The JSON must match this exact shape and key names:
 {
-  "reasoning_trace": "Explanation of the root cause...",
-  "rootCause": "Short root cause summary",
-  "suggestedFixText": "Human readable instructions for the UI",
-  "severity": "HIGH",
+  "rootCause": "Detailed explanation of the root cause.",
+  "fixSuggestion": "Detailed fix instructions.",
   "patchFiles": [
     {
-      "filePath": "exact/relative/path/to/file.js",
-      "fileContent": "RAW_CODE_HERE"
+      "filePath": "exact/relative/path/to/file",
+      "fileContent": "ENTIRE_FILE_CONTENT_WITH_FIX"
     }
   ]
 }
 
-CRITICAL INSTRUCTION: fileContent MUST be raw, executable code for that file.
-Do NOT include markdown code fences, language tags, or inline explanations in fileContent.
-Do NOT wrap fileContent in triple backticks.
-If no safe patch is known, return patchFiles as an empty array.
+CRITICAL INSTRUCTION: \`patchFiles[].fileContent\` MUST be raw, executable code for the full file to be overwritten.
+Do NOT include markdown code fences or wraps around the JSON output, or any conversational text.
 
 Workflow Logs:
 ${logs}`;
@@ -247,7 +243,7 @@ ${logs}`;
     const aiData = JSON.parse(responseText.replace(/```json\n|```/g, ""));
 
     // Validate response structure
-    if (!aiData.rootCause || !aiData.suggestedFixText) {
+    if (!aiData.rootCause || !aiData.fixSuggestion) {
       throw new Error("AI response missing required fields");
     }
 
@@ -270,7 +266,7 @@ ${logs}`;
     return {
       reasoning_trace: aiData.reasoning_trace || "",
       rootCause: aiData.rootCause,
-      suggestedFixText: aiData.suggestedFixText,
+      suggestedFixText: aiData.fixSuggestion,
       severity: aiData.severity || "MEDIUM",
       patchFiles,
     };

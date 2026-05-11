@@ -322,8 +322,9 @@ const createFixBranchAndCommit = async (
     };
   } catch (error) {
     console.error(
-      "Error creating fix branch and committing patch files:",
+      "❌ Error creating fix branch and committing patch files (Steps a, b, c):",
       error.message,
+      error.stack,
     );
     throw mapOctokitError(error);
   }
@@ -351,6 +352,12 @@ const createPullRequest = async ({
   body,
 }) => {
   try {
+    if (!files || !Array.isArray(files) || files.length === 0) {
+      throw new Error(
+        "patchFiles is empty or undefined. Auto-Fix PR creation aborted as there are no files to apply patches to.",
+      );
+    }
+
     const parsedRepo = parseGitHubRepo(repoUrl);
     if (!parsedRepo) {
       throw new Error("Invalid repository format");
@@ -359,6 +366,8 @@ const createPullRequest = async ({
     const { owner, repo } = parsedRepo;
     const decryptedToken = resolveGitHubAccessToken(githubToken);
     const octokit = getOctokit(decryptedToken);
+
+    // Bước (a): Lấy base branch và SHA (sẽ xử lý bên trong createFixBranchAndCommit để chia sẻ logic)
     const resolvedBaseBranch = await resolveBaseBranch(
       octokit,
       owner,
@@ -371,22 +380,20 @@ const createPullRequest = async ({
         ? newBranch.trim()
         : `autofix-${Date.now()}`;
 
-    let committedBranch = branchName;
+    // Bước (b) & (c): Tạo nhánh mới và tạo commit ghi đè
+    const commitResult = await createFixBranchAndCommit(
+      decryptedToken,
+      owner,
+      repo,
+      resolvedBaseBranch,
+      files,
+      branchName,
+      title || "chore: apply AI suggested fixes",
+    );
 
-    if (Array.isArray(files) && files.length > 0) {
-      const commitResult = await createFixBranchAndCommit(
-        decryptedToken,
-        owner,
-        repo,
-        resolvedBaseBranch,
-        files,
-        branchName,
-        title || "chore: apply AI suggested fixes",
-      );
+    const committedBranch = commitResult.branchName;
 
-      committedBranch = commitResult.branchName;
-    }
-
+    // Bước (d): Khởi tạo Pull Request
     const { data } = await octokit.rest.pulls.create({
       owner,
       repo,
@@ -405,12 +412,13 @@ const createPullRequest = async ({
       ...data,
     };
   } catch (error) {
-    const wrappedError = mapOctokitError(error);
     console.error(
-      "Error creating PR:",
-      wrappedError.message,
-      wrappedError.details,
+      "❌ Error in GitHub PR Creation flow: backend failed at one of the steps:",
+      error.message,
+      error.stack,
     );
+    const wrappedError = mapOctokitError(error);
+    console.error("Error details:", wrappedError.details);
     throw wrappedError;
   }
 };
