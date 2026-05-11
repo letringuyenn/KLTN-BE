@@ -22,6 +22,7 @@ const globalLimiter = rateLimit({
   message: "Too many requests from this IP, please try again later.",
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  skip: (req) => req.originalUrl.startsWith("/api/auth"),
 });
 app.use("/api/", globalLimiter);
 
