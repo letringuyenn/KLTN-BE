@@ -195,7 +195,7 @@ const analyzeLogsWithAI = async (logs, customApiKey, context = {}) => {
     const tier = context.tier === "PRO" ? "PRO" : "FREE";
     const fileTree = context.fileTree || "File tree not available";
     
-    const localModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    const localModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const branchName = context.branchName || "main";
     const prNumber = context.prNumber || null;
