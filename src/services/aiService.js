@@ -194,7 +194,7 @@ const analyzeLogsWithAI = async (logs, customApiKey, context = {}) => {
     const genAI = new GoogleGenerativeAI(cleanKey);
     const tier = context.tier === "PRO" ? "PRO" : "FREE";
     
-    const localModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const localModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
     const branchName = context.branchName || "main";
     const prNumber = context.prNumber || null;
