@@ -109,10 +109,11 @@ const getAnalysisStatus = async (req, res) => {
     }
 
     if (job.status === "failed") {
-      return res.status(200).json({
-        success: true,
+      return res.status(400).json({
+        success: false,
         jobId: job._id,
         status: mapJobStatusForClient(job.status),
+        error: job.errorMessage || "Analysis failed",
         errorMessage: job.errorMessage || "Analysis failed",
       });
     }

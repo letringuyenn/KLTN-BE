@@ -1,5 +1,4 @@
 require("dotenv").config();
-const { connectDB } = require("../config/database");
 const AnalysisJob = require("../models/AnalysisJob");
 
 const POLL_INTERVAL_MS = parseInt(
@@ -36,6 +35,13 @@ async function processNextPendingJob() {
   isPolling = true;
 
   try {
+    // Recover stuck jobs (processing for > 5 minutes)
+    const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
+    await AnalysisJob.updateMany(
+      { status: "processing", updatedAt: { $lt: fiveMinsAgo } },
+      { $set: { status: "failed", errorMessage: "Job crashed or timed out unexpectedly" } }
+    );
+
     const job = await AnalysisJob.findOneAndUpdate(
       { status: "pending" },
       { $set: { status: "processing" } },
@@ -81,7 +87,6 @@ async function processNextPendingJob() {
 }
 
 async function startAnalysisWorker() {
-  await connectDB();
   console.log(
     `[Worker] MongoDB-backed analysis worker started — poll interval: ${POLL_INTERVAL_MS}ms`,
   );
@@ -100,10 +105,13 @@ async function stopAnalysisWorker() {
 }
 
 if (require.main === module) {
-  startAnalysisWorker().catch((error) => {
-    console.error("[Worker] Failed to start analysis worker:", error);
-    process.exit(1);
-  });
+  const { connectDB } = require("../config/database");
+  connectDB()
+    .then(() => startAnalysisWorker())
+    .catch((error) => {
+      console.error("[Worker] Failed to start analysis worker:", error);
+      process.exit(1);
+    });
 }
 
 module.exports = {

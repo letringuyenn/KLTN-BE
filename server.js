@@ -6,6 +6,7 @@ const { rateLimit } = require("express-rate-limit");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const { connectDB } = require("./src/config/database");
+const { startAnalysisWorker } = require("./src/workers/analysisWorker");
 
 const app = express();
 
@@ -104,6 +105,10 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  // Start the embedded worker
+  startAnalysisWorker().catch((err) => {
+    console.error("Failed to start embedded worker:", err);
+  });
 });
 
 module.exports = app;
