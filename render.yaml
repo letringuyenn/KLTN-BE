@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: kltn-be-web
+    env: node
+    plan: starter
+    rootDir: .
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+  - type: worker
+    name: kltn-be-worker
+    env: node
+    plan: starter
+    rootDir: .
+    buildCommand: npm install
+    startCommand: npm run worker
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production

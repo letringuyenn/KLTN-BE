@@ -4,6 +4,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "worker": "node worker.js",
     "dev": "concurrently \"nodemon server.js\" \"nodemon src/workers/analysisWorker.js\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

@@ -18,6 +18,31 @@ const buildSearchText = (logs, context = {}) => {
     .slice(0, 1200);
 };
 
+function isGeminiQuotaError(error) {
+  const message = String(error?.message || "").toLowerCase();
+  const responseText = String(
+    error?.response?.data?.error?.message ||
+      error?.response?.data?.message ||
+      error?.response?.data ||
+      "",
+  ).toLowerCase();
+  const code = String(error?.code || "").toLowerCase();
+
+  return (
+    error?.status === 429 ||
+    error?.statusCode === 429 ||
+    error?.response?.status === 429 ||
+    code === "resource_exhausted" ||
+    code === "quota_exceeded" ||
+    message.includes("quota") ||
+    message.includes("resource exhausted") ||
+    message.includes("rate limit") ||
+    responseText.includes("quota") ||
+    responseText.includes("resource exhausted") ||
+    responseText.includes("rate limit")
+  );
+}
+
 const fetchKnowledgeContext = async (searchText) => {
   if (!searchText || !searchText.trim()) {
     return "";
@@ -237,6 +262,23 @@ ${logs}`;
       patchFiles,
     };
   } catch (error) {
+    if (isGeminiQuotaError(error)) {
+      const quotaError = new Error(
+        "Gemini API quota or rate limit exceeded. Please retry later or use a different API key.",
+      );
+      quotaError.status = 429;
+      quotaError.code = "GEMINI_QUOTA_EXCEEDED";
+      quotaError.details = error?.response?.data || error?.message || null;
+
+      console.error("Error analyzing logs with AI: Gemini quota exceeded", {
+        message: error?.message,
+        status: error?.status || error?.statusCode || error?.response?.status,
+        responseData: error?.response?.data,
+      });
+
+      throw quotaError;
+    }
+
     console.error("Error analyzing logs with AI:", error.message);
     console.warn("⚠ Falling back to heuristic analysis");
     return analyzeWithHeuristics(logs, context);
