@@ -3,9 +3,19 @@ const User = require("../models/User");
 const axios = require("axios"); // Thêm thư viện này để gọi API
 const { encryptString } = require("../utils/crypto");
 
+function getFrontendBaseUrl() {
+  const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL;
+
+  if (!frontendUrl) {
+    throw new Error("FRONTEND_URL or CLIENT_URL is not configured");
+  }
+
+  return String(frontendUrl).replace(/\/$/, "");
+}
+
 function buildGitHubAuthorizeUrl(stateFromClient = "") {
   const clientId = process.env.GITHUB_CLIENT_ID;
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const frontendUrl = getFrontendBaseUrl();
   const redirectUri = `${frontendUrl}/auth/callback`;
 
   if (!clientId) {
@@ -117,6 +127,7 @@ const handleGitHubCallback = async (req, res, next) => {
         client_id: process.env.GITHUB_CLIENT_ID,
         client_secret: process.env.GITHUB_CLIENT_SECRET,
         code: code,
+        redirect_uri: `${getFrontendBaseUrl()}/auth/callback`,
       },
       {
         headers: { Accept: "application/json" },

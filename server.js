@@ -30,7 +30,8 @@ app.use("/api/", globalLimiter);
 // are not subject to strict limits.
 
 // ===== Middleware =====
-const allowedFrontendOrigin = process.env.FRONTEND_URL;
+const allowedFrontendOrigin =
+  process.env.FRONTEND_URL || process.env.CLIENT_URL;
 app.use(
   cors({
     origin: (origin, callback) => {

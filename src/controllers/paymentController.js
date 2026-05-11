@@ -2,6 +2,11 @@ const { completeDemoPaymentForUser } = require("../services/paymentService");
 
 const PRO_PLAN_DEMO_PRICE = Number(process.env.PRO_DEMO_PRICE_USD || 15);
 const PRO_PLAN_DEMO_CURRENCY = process.env.PRO_DEMO_CURRENCY || "USD";
+const FRONTEND_BASE_URL = (
+  process.env.FRONTEND_URL ||
+  process.env.CLIENT_URL ||
+  ""
+).replace(/\/$/, "");
 
 const demoCheckout = async (req, res) => {
   try {
@@ -24,7 +29,7 @@ const demoCheckout = async (req, res) => {
       message: "Demo checkout completed. Account upgraded to PRO.",
       transaction,
       user,
-      redirectUrl: `${process.env.FRONTEND_URL || "http://localhost:3000"}/dashboard`,
+      redirectUrl: `${FRONTEND_BASE_URL}/dashboard`,
     });
   } catch (error) {
     console.error("Demo checkout error:", error);
@@ -48,7 +53,7 @@ const mockVerifyPayment = async (req, res) => {
       message: "Demo payment verified. Account upgraded to PRO.",
       transaction,
       user,
-      redirectUrl: `${process.env.FRONTEND_URL || "http://localhost:3000"}/dashboard`,
+      redirectUrl: `${FRONTEND_BASE_URL}/dashboard`,
     });
   } catch (error) {
     return res.status(error.status || 500).json({
