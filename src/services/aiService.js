@@ -186,11 +186,11 @@ const analyzeLogsWithAI = async (logs, customApiKey, context = {}) => {
         throw new Error("BACKEND_MISSING_API_KEY: Không tìm thấy khóa nào từ cả User và Environment.");
     }
 
-    const client = new GoogleGenerativeAI(apiKey);
+    // KHỞI TẠO LOCAL NGAY BÊN TRONG HÀM ĐỂ NHẬN ĐÚNG KEY SAU KHI TRIM:
+    const genAI = new GoogleGenerativeAI(apiKey.trim());
     const tier = context.tier === "PRO" ? "PRO" : "FREE";
-    const modelName = "gemini-1.5-flash"; // Fixed invalid model name
-
-    const model = client.getGenerativeModel({ model: modelName });
+    
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const branchName = context.branchName || "main";
     const prNumber = context.prNumber || null;
