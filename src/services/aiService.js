@@ -176,7 +176,7 @@ const analyzeLogsWithAI = async (logs, customApiKey, context = {}) => {
     const API_KEY_TO_USE = customApiKey || process.env.GEMINI_API_KEY;
 
     if (!API_KEY_TO_USE) {
-      console.warn("⚠ GEMINI_API_KEY not found, using heuristic fallback");
+      console.error("🔥 KHÔNG TÌM THẤY API KEY!");
       return analyzeWithHeuristics(logs, context);
     }
 
@@ -238,18 +238,23 @@ ${logs}`;
         ),
       ),
     ]);
-    const responseText = result.response.text();
+    
+    let rawText = result.response.text();
     console.log("--- RAW GEMINI RESPONSE ---");
-    console.log(responseText);
+    console.log(rawText);
     console.log("---------------------------");
 
-    // Robust JSON cleanup to prevent parse errors from markdown quotes or trailing text
-    const cleanJsonText = responseText
-      .replace(/```json/gi, "")
-      .replace(/```/g, "")
-      .trim();
+    // Xóa bỏ markdown code block
+    rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
 
-    const aiData = JSON.parse(cleanJsonText);
+    let aiData;
+    try {
+      aiData = JSON.parse(rawText);
+    } catch (parseError) {
+      console.error("🔥 LỖI PARSE JSON TỪ GEMINI:", parseError.message);
+      console.error("Raw text sau khi clean:", rawText);
+      throw parseError; // Throw để block outer catch bắt được
+    }
 
     // Validate response structure
     if (!aiData.rootCause || !aiData.fixSuggestion) {
@@ -297,10 +302,10 @@ ${logs}`;
       throw quotaError;
     }
 
-    console.error("❌ Error analyzing logs with AI:", error.message);
-    if (error.name === "SyntaxError") {
-      console.error("The AI generated invalid JSON. Check the RAW GEMINI RESPONSE above.");
-    }
+    console.error("🔥 LỖI GỌI GEMINI API:");
+    console.error("- Message:", error.message);
+    console.error("- Stack:", error.stack);
+    
     console.warn("⚠ Falling back to heuristic analysis");
     return analyzeWithHeuristics(logs, context);
   }
