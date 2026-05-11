@@ -173,14 +173,20 @@ const analyzeLogsWithAI = async (logs, customApiKey, context = {}) => {
       throw new Error("Logs cannot be empty");
     }
 
-    const API_KEY_TO_USE = customApiKey || process.env.GEMINI_API_KEY;
+    const apiKey = customApiKey || process.env.GEMINI_API_KEY;
 
-    if (!API_KEY_TO_USE) {
-      console.error("🔥 KHÔNG TÌM THẤY API KEY!");
-      return analyzeWithHeuristics(logs, context);
+    console.log("=========================================");
+    console.log("🔍 KIỂM TRA LUỒNG NẠP API KEY:");
+    console.log("- Có User BYOK Key không?:", !!customApiKey);
+    console.log("- Có ENV GEMINI_API_KEY không?:", !!process.env.GEMINI_API_KEY);
+    console.log("- Chiều dài Key sẽ sử dụng:", apiKey ? apiKey.length : 0);
+    console.log("=========================================");
+
+    if (!apiKey || apiKey.trim() === "") {
+        throw new Error("BACKEND_MISSING_API_KEY: Không tìm thấy khóa nào từ cả User và Environment.");
     }
 
-    const client = new GoogleGenerativeAI(API_KEY_TO_USE);
+    const client = new GoogleGenerativeAI(apiKey);
     const tier = context.tier === "PRO" ? "PRO" : "FREE";
     const modelName = "gemini-1.5-flash"; // Fixed invalid model name
 
