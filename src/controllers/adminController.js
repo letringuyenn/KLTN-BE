@@ -316,15 +316,46 @@ const syncAiKnowledge = async (req, res) => {
       ];
     }
 
-    await KnowledgeBase.deleteMany({});
-    const inserted = await KnowledgeBase.insertMany(docs, { ordered: true });
-    const syncedCount = inserted.length;
+    // ✅ FIX: APPEND new knowledge instead of DELETE old data
+    // This way, knowledge base grows and accumulates solutions over time
+    const upsertedDocs = [];
+
+    for (const doc of docs) {
+      // Check if document already exists by title and sourceUrl
+      const existingDoc = await KnowledgeBase.findOne({
+        title: doc.title,
+        sourceUrl: doc.sourceUrl,
+      });
+
+      if (existingDoc) {
+        // Update existing document
+        await KnowledgeBase.updateOne(
+          { _id: existingDoc._id },
+          {
+            content: doc.content,
+            tags: doc.tags,
+            updatedAt: new Date(),
+          },
+        );
+        upsertedDocs.push(existingDoc._id);
+      } else {
+        // Insert new document
+        const inserted = await KnowledgeBase.create(doc);
+        upsertedDocs.push(inserted._id);
+      }
+    }
+
+    const syncedCount = upsertedDocs.length;
+
+    console.log(
+      `[Admin] AI Knowledge synced: ${syncedCount} documents (APPEND mode, not DELETE)`,
+    );
 
     return res.status(200).json({
       success: true,
       syncedCount,
       sourceUrl,
-      message: `Synchronized ${syncedCount} knowledge document(s).`,
+      message: `Synchronized ${syncedCount} knowledge document(s). Data is accumulated, not replaced.`,
     });
   } catch (error) {
     console.error("Error synchronizing AI knowledge:", error.message);

@@ -11,6 +11,7 @@ const {
   parseGitHubRepo,
   extractRunId,
   extractPrimaryErrorMessage,
+  extractTestFailureDetails,
 } = require("../utils/logParser");
 const { resolveEffectiveApiKey } = require("../utils/apiKeyResolver");
 
@@ -200,6 +201,10 @@ async function analyzeWorkflowForUser({
     }
 
     console.log("[Analysis] Calling Gemini analysis with file tree context...");
+
+    // ✅ Extract test failure details for AI analysis
+    const testFailures = extractTestFailureDetails(workflowData.logs || "");
+
     const aiAnalysis = await analyzeLogsWithAI(
       workflowData.logs || "",
       effectiveApiKey,
@@ -209,6 +214,7 @@ async function analyzeWorkflowForUser({
         errorMessage: extractPrimaryErrorMessage(workflowData.logs || ""),
         tier: user.tier,
         fileTree: fileTreeForAI,
+        testFailureDetails: testFailures, // ✅ Pass test failure details
       },
     );
 
