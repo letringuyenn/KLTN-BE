@@ -6,6 +6,7 @@ const {
   createAdminDoc: createDocumentation,
   updateAdminDoc: updateDocumentation,
   deleteAdminDoc: deleteDocumentation,
+  restoreAdminDoc: restoreDocumentation,
 } = require("../services/documentationService");
 
 async function getPublishedDocs(req, res) {
@@ -182,6 +183,33 @@ async function deleteAdminDoc(req, res) {
   }
 }
 
+async function restoreAdminDoc(req, res) {
+  try {
+    const { id } = req.params;
+
+    const doc = await restoreDocumentation(id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Documentation restored successfully",
+      doc,
+    });
+  } catch (error) {
+    console.error("Error restoring documentation:", error.message);
+    if (error.status) {
+      return res.status(error.status).json({
+        success: false,
+        error: error.message,
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      error: "Failed to restore documentation",
+      details: error.message,
+    });
+  }
+}
+
 module.exports = {
   getPublishedDocs,
   getPublishedDocBySlug,
@@ -190,4 +218,5 @@ module.exports = {
   createAdminDoc,
   updateAdminDoc,
   deleteAdminDoc,
+  restoreAdminDoc,
 };

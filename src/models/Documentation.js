@@ -30,6 +30,15 @@ const DocumentationSchema = new mongoose.Schema(
       default: false,
       index: true,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

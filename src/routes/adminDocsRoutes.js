@@ -6,6 +6,7 @@ const {
   createAdminDoc,
   updateAdminDoc,
   deleteAdminDoc,
+  restoreAdminDoc,
 } = require("../controllers/docsController");
 
 const router = express.Router();
@@ -41,5 +42,11 @@ router.put("/:id", updateAdminDoc);
  * Delete a doc.
  */
 router.delete("/:id", deleteAdminDoc);
+
+/**
+ * POST /api/admin/docs/:id/restore
+ * Restore a deleted doc.
+ */
+router.post("/:id/restore", restoreAdminDoc);
 
 module.exports = router;

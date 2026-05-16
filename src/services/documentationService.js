@@ -68,7 +68,10 @@ async function generateUniqueSlug(title, excludeId) {
 
 async function getPublishedDocs() {
   const docs = await Documentation.find({
-    $or: [{ isPublished: true }, { isPublished: { $exists: false } }],
+    $and: [
+      { $or: [{ isPublished: true }, { isPublished: { $exists: false } }] },
+      { $or: [{ isDeleted: false }, { isDeleted: { $exists: false } }] },
+    ],
   })
     .sort({ order: 1, createdAt: 1 })
     .lean();
@@ -92,6 +95,9 @@ async function getPublishedDocBySlug(slug) {
       {
         $or: [{ isPublished: true }, { isPublished: { $exists: false } }],
       },
+      {
+        $or: [{ isDeleted: false }, { isDeleted: { $exists: false } }],
+      },
     ],
   }).lean();
 
@@ -100,16 +106,23 @@ async function getPublishedDocBySlug(slug) {
 
 async function getAdminDocs(page, limit) {
   const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
-  const safeLimit = Math.min(100, Math.max(1, Number.parseInt(limit, 10) || 20));
+  const safeLimit = Math.min(
+    100,
+    Math.max(1, Number.parseInt(limit, 10) || 20),
+  );
   const skip = (safePage - 1) * safeLimit;
 
+  const query = {
+    $or: [{ isDeleted: false }, { isDeleted: { $exists: false } }],
+  };
+
   const [docs, total] = await Promise.all([
-    Documentation.find({})
+    Documentation.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(safeLimit)
       .lean(),
-    Documentation.countDocuments({}),
+    Documentation.countDocuments(query),
   ]);
 
   return {
@@ -225,7 +238,12 @@ async function deleteAdminDoc(id) {
     throw error;
   }
 
-  const deleted = await Documentation.findByIdAndDelete(id).lean();
+  const deleted = await Documentation.findByIdAndUpdate(
+    id,
+    { isDeleted: true, deletedAt: new Date() },
+    { new: true },
+  ).lean();
+
   if (!deleted) {
     const error = new Error("Documentation not found");
     error.status = 404;
@@ -233,6 +251,28 @@ async function deleteAdminDoc(id) {
   }
 
   return deleted;
+}
+
+async function restoreAdminDoc(id) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    const error = new Error("Invalid documentation id");
+    error.status = 400;
+    throw error;
+  }
+
+  const restored = await Documentation.findByIdAndUpdate(
+    id,
+    { isDeleted: false, deletedAt: null },
+    { new: true },
+  ).lean();
+
+  if (!restored) {
+    const error = new Error("Documentation not found");
+    error.status = 404;
+    throw error;
+  }
+
+  return mapDocumentationDoc(restored);
 }
 
 module.exports = {
@@ -243,5 +283,6 @@ module.exports = {
   createAdminDoc,
   updateAdminDoc,
   deleteAdminDoc,
+  restoreAdminDoc,
   mapDocumentationDoc,
 };
