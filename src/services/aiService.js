@@ -285,10 +285,11 @@ Bạn CÓ THỂ gặp các loại lỗi sau đây, và cần phân tích + đề
    - Action: Check credentials, verify endpoints, add retries
 
 PHÂN TÍCH CHI TIẾT:
-- Đọc và hiểu TẬT CẢ test failure details để xác định CHÍNH XÁC logic sai ở đâu
-- Không chỉ nói "test failed", mà phải nói "test failed vì hàm X tính sai giá trị Y"
-- Nếu có "Expected vs Actual", hãy suy luận tại sao logic sai
-- Xem xét toàn bộ hệ thống, không chỉ fix cái "sáng nhất"
+- Tập trung MẠNH MẼ vào nguyên nhân gốc rễ (Root Cause) của lỗi. Root Cause cần phải ngắn gọn, súc tích, đi thẳng vào vấn đề chính, hạn chế các từ ngữ rườm rà.
+- Đọc và hiểu TẬT CẢ test failure details để xác định CHÍNH XÁC logic sai ở đâu.
+- Không chỉ nói "test failed", mà phải nói "test failed vì hàm X tính sai giá trị Y".
+- Nếu có "Expected vs Actual", hãy suy luận tại sao logic sai.
+- Xem xét toàn bộ hệ thống, không chỉ fix cái "sáng nhất".
 
 NGUYÊN TẮC KHI ĐỀ XUẤT:
 1. Chỉ sửa file tồn tại trong FILE TREE
@@ -296,6 +297,20 @@ NGUYÊN TẮC KHI ĐỀ XUẤT:
 3. Cân nhắc impact toàn project (không sửa nước này mà hỏng nước khác)
 4. Nếu cần file mới, đặt vào folder hợp lệ
 5. Giải thích CHI TIẾT tại sao cách sửa đó hoạt động
+
+Your response MUST strictly adhere to this exact JSON format:
+{
+  "reasoning_trace": "A brief internal explanation of how you identified the error (chain of thought). Keep it under 2 sentences.",
+  "rootCause": "A concise, direct statement of the core issue. Max length 2-3 sentences. Do not use filler text.",
+  "suggestedFixText": "Actionable, clear guidance on how to fix.",
+  "severity": "LOW, MEDIUM, HIGH, or CRITICAL",
+  "patchFiles": [
+    {
+      "filePath": "string (MUST EXIST in the FILE TREE)",
+      "patchContent": "string (Full updated file content or unified diff)"
+    }
+  ]
+}
 
 CRITICAL INSTRUCTION: Return ONLY valid JSON. No markdown fences, no commentary, no prose outside JSON.
 CRITICAL INSTRUCTION: The JSON must match this exact shape and key names:
