@@ -173,12 +173,12 @@ const analyzeLogsWithAI = async (logs, customApiKey, context = {}) => {
       throw new Error("Logs cannot be empty");
     }
 
-    // 1. ÉP BUỘC CHỈ DÙNG KHÓA TRÊN RENDER, CẮT BỎ MỌI KHOẢNG TRẮNG VÀ DẤU NGOẶC KÉP
-    let rawKey = process.env.GEMINI_API_KEY;
+    // 1. SỬ DỤNG CUSTOM KEY (NẾU CÓ) HOẶC RENDER KEY, CẮT BỎ MỌI KHOẢNG TRẮNG VÀ DẤU NGOẶC KÉP
+    let rawKey = customApiKey || process.env.GEMINI_API_KEY;
 
     if (!rawKey) {
       throw new Error(
-        "LỖI BACKEND: Không tìm thấy biến GEMINI_API_KEY trên Render.",
+        "LỖI BACKEND: Không tìm thấy biến GEMINI_API_KEY trên Render và người dùng không cung cấp Custom Key.",
       );
     }
 
@@ -330,7 +330,13 @@ CRITICAL INSTRUCTION: \`patchFiles[].fileContent\` MUST be raw, executable code 
 Do NOT include markdown, language tags, or JSON wrapping.
 
 Workflow Logs:
-${logs}`;
+${
+  logs.length > 20000
+    ? logs.substring(0, 5000) +
+      "\n\n...[TRUNCATED TO COMBAT TOKEN LIMITS]...\n\n" +
+      logs.substring(logs.length - 15000)
+    : logs
+}`;
 
     const result = await Promise.race([
       localModel.generateContent(prompt),
