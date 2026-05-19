@@ -230,104 +230,52 @@ const analyzeLogsWithAI = async (logs, customApiKey, context = {}) => {
     const prompt = `${ragPrefix}You are an Expert DevSecOps Engineer and CI/CD Pipeline Debugger.
 Analyze the following workflow logs to identify failures and generate a machine-readable patch plan.
 
-THÔNG TIN QUAN TRỌNG: Dưới đây là cấu trúc cây thư mục thực tế của dự án:
+IMPORTANT CONTEXT: Below is the actual project file tree:
 --- FILE TREE ---
 ${fileTree}
 --- END FILE TREE ---
 ${testFailureContext}
-GitHub Flow context:
+
+GitHub Flow Context:
 - branchName: ${branchName}
 - prNumber: ${prNumber || "none"}
 - isFeatureBranch: ${isFeatureBranch ? "yes" : "no"}
 - userTier: ${tier}
 
-PHẠM VI PHÂN TÍCH VÀ SỬA CHỮA:
-Bạn CÓ THỂ gặp các loại lỗi sau đây, và cần phân tích + đề xuất sửa:
+ANALYSIS SCOPE & ERROR CATEGORIES:
+You MAY encounter the following types of errors. Analyze and propose fixes accordingly:
+1. SYNTAX & RUNTIME ERRORS: Missing dependencies, import errors, permission denied. Action: Fix imports, install packages, check paths.
+2. BUILD ERRORS: Compilation failures, missing build config. Action: Fix source code, check compiler config.
+3. TEST FAILURES & LOGIC ERRORS: Test assertions fail, logic bugs. Action: Analyze test details, fix source code logic, NOT the tests.
+4. CONFIGURATION & ENVIRONMENT: Missing env vars, wrong working dir, incorrect workflow config. Action: Add env vars, update workflow steps.
+5. RESOURCE & TIMEOUT ISSUES: Memory exceeded, timeout. Action: Optimize code, increase timeout.
+6. NETWORK & API ERRORS: Connection refused, invalid credentials. Action: Check credentials, verify endpoints.
 
-1. **SYNTAX & RUNTIME ERRORS:**
-   - Missing dependencies (npm, pip, gems, etc.)
-   - Import/Module errors (cannot find module)
-   - Syntax errors (SyntaxError, parse error)
-   - Permission denied (EACCES)
-   - File not found (ENOENT)
-   - Action: Fix imports, install packages, check paths
+ANALYSIS GUIDELINES:
+- Focus HEAVILY on the exact Root Cause of the error.
+- Read and understand ALL test failure details to pinpoint EXACTLY where the logic fails. Do not just say "test failed"; specify "function X calculated Y incorrectly".
+- Consider the entire system (Impact Analysis) to ensure a fix in one file doesn't break another.
+- ONLY modify files that exist in the provided FILE TREE. Do not assume directory structures.
 
-2. **BUILD ERRORS:**
-   - Compilation failures (TypeScript, Java, Go, etc.)
-   - Build tool errors (webpack, gradle, maven)
-   - Missing build config (tsconfig.json, build.gradle)
-   - Action: Fix source code, check compiler config, update buildpaths
+CRITICAL INSTRUCTION - OUTPUT FORMAT:
+You MUST return ONLY a valid, parseable JSON object. 
+Do NOT include markdown formatting (like \`\`\`json), commentary, or any prose outside the JSON.
+Properly escape all quotes, backslashes, and newlines in the fileContent string.
 
-3. **TEST FAILURES & LOGIC ERRORS:**
-   - Test assertions fail (expected vs actual mismatch)
-   - Logic bugs (wrong calculation, wrong condition)
-   - Algorithm errors (incorrect sorting, filtering)
-   - Business logic issues (wrong discount calculation, wrong state)
-   - Action: Analyze test failure details, fix source code logic, NOT the tests
-
-4. **CONFIGURATION & ENVIRONMENT:**
-   - Missing environment variables
-   - Wrong working directory
-   - Missing GitHub Actions secrets
-   - Incorrect workflow config (.yml file)
-   - Action: Add env vars, fix config files, update workflow steps
-
-5. **RESOURCE & TIMEOUT ISSUES:**
-   - Memory exceeded
-   - Process timeout
-   - Disk space full
-   - Action: Optimize code, increase timeout, reduce data processing
-
-6. **NETWORK & API ERRORS:**
-   - Connection refused / timeout
-   - Authentication failed
-   - Invalid credentials (tokens, API keys)
-   - Action: Check credentials, verify endpoints, add retries
-
-PHÂN TÍCH CHI TIẾT:
-- Tập trung MẠNH MẼ vào nguyên nhân gốc rễ (Root Cause) của lỗi. Root Cause cần phải ngắn gọn, súc tích, đi thẳng vào vấn đề chính, hạn chế các từ ngữ rườm rà.
-- Đọc và hiểu TẬT CẢ test failure details để xác định CHÍNH XÁC logic sai ở đâu.
-- Không chỉ nói "test failed", mà phải nói "test failed vì hàm X tính sai giá trị Y".
-- Nếu có "Expected vs Actual", hãy suy luận tại sao logic sai.
-- Xem xét toàn bộ hệ thống, không chỉ fix cái "sáng nhất".
-
-NGUYÊN TẮC KHI ĐỀ XUẤT:
-1. Chỉ sửa file tồn tại trong FILE TREE
-2. Không giả định cấu trúc nếu chưa thấy
-3. Cân nhắc impact toàn project (không sửa nước này mà hỏng nước khác)
-4. Nếu cần file mới, đặt vào folder hợp lệ
-5. Giải thích CHI TIẾT tại sao cách sửa đó hoạt động
-
-Your response MUST strictly adhere to this exact JSON format:
+The JSON object MUST strictly match this exact schema:
 {
   "reasoning_trace": "A brief internal explanation of how you identified the error (chain of thought). Keep it under 2 sentences.",
-  "rootCause": "A concise, direct statement of the core issue. Max length 2-3 sentences. Do not use filler text.",
-  "suggestedFixText": "Actionable, clear guidance on how to fix.",
-  "severity": "LOW, MEDIUM, HIGH, or CRITICAL",
+  "rootCause": "A direct, concise summary of the exact core issues. Use short statements or bullet points (e.g., '- Missing dependency X', '- Logic flaw in function Y'). NO filler text. Max 3 key points.",
+  "fixSuggestion": "Actionable, clear guidance on how to fix the issue and why this fix works.",
+  "severity": "LOW", // MUST be one of: LOW, MEDIUM, HIGH, CRITICAL
   "patchFiles": [
     {
-      "filePath": "string (MUST EXIST in the FILE TREE)",
-      "patchContent": "string (Full updated file content or unified diff)"
+      "filePath": "exact/path/from/file/tree (MUST EXIST)",
+      "fileContent": "ENTIRE_FILE_CONTENT_WITH_FIX. Ensure this is valid code and properly JSON escaped."
     }
   ]
 }
-
-CRITICAL INSTRUCTION: Return ONLY valid JSON. No markdown fences, no commentary, no prose outside JSON.
-CRITICAL INSTRUCTION: The JSON must match this exact shape and key names:
-{
-  "rootCause": "Detailed explanation of ROOT CAUSE (specific: missing dependency, wrong logic in function X, missing env var Y, etc.)",
-  "fixSuggestion": "Detailed fix instructions: 1) file to modify, 2) what to change, 3) why this fixes the issue",
-  "patchFiles": [
-    {
-      "filePath": "exact/path/from/file/tree",
-      "fileContent": "ENTIRE_FILE_CONTENT_WITH_FIX"
-    }
-  ]
-}
-
-CRITICAL INSTRUCTION: Always provide patchFiles array. If no files to fix, use empty array [].
-CRITICAL INSTRUCTION: \`patchFiles[].fileContent\` MUST be raw, executable code (full file, not truncated).
-Do NOT include markdown, language tags, or JSON wrapping.
+If no files need to be fixed (e.g., missing GitHub secret or external service down), return an empty array for patchFiles: "patchFiles": [].
 
 Workflow Logs:
 ${
